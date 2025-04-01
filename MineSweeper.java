@@ -28,6 +28,33 @@ public class MineSweeper {
         }
         
     }
+	public class RoundedButton extends JButton {
+
+	    public RoundedButton(String text) {
+	        super(text);
+	        setFont(new Font("Arial", Font.BOLD, 20));
+	        setFocusPainted(false);
+	        setContentAreaFilled(false);
+	        setOpaque(false);
+	        setForeground(new Color(220, 220, 220));
+	    }
+
+	    @Override
+	    protected void paintComponent(Graphics g) {
+	        Graphics2D g2 = (Graphics2D) g.create();
+	        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+	        g2.setColor(new Color(0, 0, 70));
+	        g2.fillRoundRect(0, 0, getWidth(), getHeight(), 5, 5);
+
+	        super.paintComponent(g);
+	        g2.dispose();
+	    }
+
+	    @Override
+	    protected void paintBorder(Graphics g) {
+	    }
+	}
 
     int tileSize = 60;
     int numRows;
@@ -41,7 +68,9 @@ public class MineSweeper {
     JLabel bestTimeLabel = new JLabel("Best Time: 0s");
     JPanel textPanel = new JPanel();
     JPanel boardPanel = new JPanel();
-    JButton replaybutton = new JButton("restart");
+    RoundedButton replaybutton = new RoundedButton("restart");
+    
+    ImageIcon image = new ImageIcon("imgs/landmine.png");
     
     int MineCount;
     MineTile[][] board;
@@ -55,12 +84,15 @@ public class MineSweeper {
     private int secondsElapsed = 0;
     private int bestTime = Integer.MAX_VALUE;
 
-    private App app;
+    App app;
+    LightGame game;
+    LineDots ld;
+    BoomDefuse bdf;
 
     public MineSweeper(App app, String mode) {
         this.app = app;
+        this.mode = mode;
 
-        // 모드에 따라 행, 열, 지뢰 개수 설정
         switch (mode) {
             case "EASY":
                 numRows = 10;
@@ -83,6 +115,7 @@ public class MineSweeper {
         this.bestTime = loadBestTime(mode);
         updateBestTimeLabel(mode);
         
+        frame.setIconImage(image.getImage());
         frame.setVisible(true);
         frame.setSize(boardWidth, boardHeight);
         frame.setLocationRelativeTo(null);
@@ -106,10 +139,20 @@ public class MineSweeper {
         textPanel.add(timerLabel, BorderLayout.CENTER);
         textPanel.add(bestTimeLabel, BorderLayout.SOUTH);
         frame.add(textPanel, BorderLayout.NORTH);
+        textPanel.add(replaybutton, BorderLayout.EAST);
 
         boardPanel.setLayout(new GridLayout(numRows, numCols));
         boardPanel.setBackground(Color.DARK_GRAY);
         frame.add(boardPanel);
+        
+        replaybutton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        replaybutton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                restartGame();
+            }
+        });
+        replaybutton.setPreferredSize(new Dimension(120, 45));
 
         for (int r = 0; r < numRows; r++) {
             for (int c = 0; c < numCols; c++) {
@@ -154,7 +197,7 @@ public class MineSweeper {
         setMines();
         startTimer();
     }
-    void startTimer() { //타이머 시작하는 메서드
+    void startTimer() {
         if (timer == null) {
             timer = new Timer(1000, new ActionListener() {
                 @Override
@@ -169,13 +212,13 @@ public class MineSweeper {
         }
     }
 
-    void stopTimer() { //타이머 멈추개하는 메서드
+    void stopTimer() {
         if (timer != null) {
             timer.stop();
         }
     }
     
-    void setMines() { //지뢰의 위치를 정해두는 메서드
+    void setMines() {
         mineList = new ArrayList<>();
         int mineLeft = MineCount;
         while (mineLeft > 0) {
@@ -189,8 +232,8 @@ public class MineSweeper {
             }
         }
     }
-
-    void revealMines() { //지뢰를 찾았을 경우
+    
+    void revealMines() {
         for (MineTile tile : mineList) {
             tile.setText("💣");
         }
@@ -198,9 +241,27 @@ public class MineSweeper {
         gameOver = true;
         textLabel.setText("Game Over");
         stopTimer();
+        
+        String[] responses = {"예","아니요"};
+        ImageIcon icon = new ImageIcon(" ");
+        int result = JOptionPane.showOptionDialog(null, "게임을 계속하시겠습니까?", "quetion", JOptionPane.YES_NO_OPTION, 
+        		JOptionPane.QUESTION_MESSAGE, icon, responses, 0);
+        if (result == JOptionPane.YES_OPTION) {
+            StartMemu startMenu = new StartMemu(mode -> {
+                MineSweeper newGame = new MineSweeper(app,mode);
+            });
+            startMenu.showMenu();
+            frame.dispose();
+        } 
+        else if (result == JOptionPane.NO_OPTION) {
+            frame.dispose();
+        } 
+        else {
+            frame.dispose();
+        }
         }
 
-    void checkMine(int r, int c) { //지뢰의 위치를 체크하는 메서드
+    void checkMine(int r, int c) {
         if (r < 0 || r >= numRows || c < 0 || c >= numCols) {
             return;
         }
@@ -245,24 +306,96 @@ public class MineSweeper {
             gameOver = true;
             textLabel.setText("Mines Cleared!");
             stopTimer();
-			
+            
+            saveAllTime(mode, secondsElapsed);
             if (secondsElapsed < bestTime) {
                 bestTime = secondsElapsed;
                 saveBestTimeToFile(mode, bestTime);
                 updateBestTimeLabel(mode);
             }
-            
-            app.onMinesweeperWin(); //app클래스에 게임을 승리했다는 내용 넣음.
+            int choice = (int)(Math.random()*3);
+            switch (choice) {
+                case 0:
+                    System.out.println("LineDots를 띄웁니다.");
+                    SwingUtilities.invokeLater(LineDots::createAndShowGUI);
+                break;
+                case 1:
+                    System.out.println("LightGame을 띄웁니다.");
+                    SwingUtilities.invokeLater(LightGame::createAndShowGUI);
+                break;
+                case 2:
+                    System.out.println("BoomDefuse를 띄웁니다.");
+                    SwingUtilities.invokeLater(BoomDefuse::createAndShowGUI);
+                break;
+                default: System.out.print("error");
+            }
+            frame.dispose();
         }
 	}
+    void saveAllTime(String mode, int time) {
+        try {
+            File file = new File("times.txt");
+            try (FileWriter writer = new FileWriter(file, true);
+                 BufferedWriter bufferedWriter = new BufferedWriter(writer)) {
 
+                bufferedWriter.write(mode + ": " + time);
+                bufferedWriter.newLine(); // 줄 바꿈 추가
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
     void saveBestTimeToFile(String mode, int time) {
         try {
-            // 기존 데이터를 읽어와 수정
             File file = new File("game_time.txt");
             ArrayList<String> lines = new ArrayList<>();
 
-            // 파일이 존재하지 않을 경우 초기화
+            if (!file.exists()) {
+                lines.add("N/A");
+                lines.add("N/A");
+                lines.add("N/A");
+            } else {
+                try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        lines.add(line);
+                    }
+                }
+            }
+
+            while (lines.size() < 3) {
+                lines.add("N/A");
+            }
+            switch (mode) {
+                case "EASY":
+                    lines.set(0, Integer.toString(time));
+                    break;
+                case "NORMAL":
+                    lines.set(1, Integer.toString(time));
+                    break;
+                case "HARD":
+                    lines.set(2, Integer.toString(time));
+                    break;
+            }
+
+            try (FileWriter writer = new FileWriter(file, false)) {
+                for (String line : lines) {
+                    writer.write(line + "\n");
+                }
+            }
+            System.out.println("파일 저장 완료!");
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    int loadBestTime(String mode) {
+        try {
+            File file = new File("game_time.txt");
+            ArrayList<String> lines = new ArrayList<>();
             if (file.exists()) {
                 try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
                     String line;
@@ -272,50 +405,17 @@ public class MineSweeper {
                 }
             }
 
-            // 각 모드별 시간 갱신
             while (lines.size() < 3) {
-                lines.add("N/A"); // 모드별 초기 값 추가
+                lines.add("N/A");
             }
 
             switch (mode) {
-                case "NORMAL":
-                    lines.set(0, Integer.toString(time));
-                    break;
                 case "EASY":
-                    lines.set(1, Integer.toString(time));
-                    break;
-                case "HARD":
-                    lines.set(2, Integer.toString(time));
-                    break;
-            }
-
-            // 파일에 다시 쓰기
-            try (FileWriter writer = new FileWriter(file)) {
-                for (String line : lines) {
-                    writer.write(line + "\n");
-                }
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    int loadBestTime(String mode) {
-        try (BufferedReader reader = new BufferedReader(new FileReader("game_time.txt"))) {
-            ArrayList<String> lines = new ArrayList<>();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                lines.add(line);
-            }
-
-            switch (mode) {
+                    return !lines.get(0).equals("N/A") ? Integer.parseInt(lines.get(0)) : Integer.MAX_VALUE;
                 case "NORMAL":
-                    return lines.size() > 0 && !lines.get(0).equals("N/A") ? Integer.parseInt(lines.get(0)) : Integer.MAX_VALUE;
-                case "EASY":
-                    return lines.size() > 1 && !lines.get(1).equals("N/A") ? Integer.parseInt(lines.get(1)) : Integer.MAX_VALUE;
+                    return !lines.get(1).equals("N/A") ? Integer.parseInt(lines.get(1)) : Integer.MAX_VALUE;
                 case "HARD":
-                    return lines.size() > 2 && !lines.get(2).equals("N/A") ? Integer.parseInt(lines.get(2)) : Integer.MAX_VALUE;
+                    return !lines.get(2).equals("N/A") ? Integer.parseInt(lines.get(2)) : Integer.MAX_VALUE;
             }
 
         } catch (IOException | NumberFormatException e) {
@@ -324,16 +424,18 @@ public class MineSweeper {
         return Integer.MAX_VALUE;
     }
 
+
     void updateBestTimeLabel(String mode) {
         int time = loadBestTime(mode);
         if (time == Integer.MAX_VALUE) {
             bestTimeLabel.setText("Best Time (" + mode + "): N/A");
-        } else {
+        }
+        else {
             bestTimeLabel.setText("Best Time (" + mode + "): " + time + "s");
         }
     }
 
-    int countMine(int r, int c) { //지뢰를 개수를 계산하는 메서드
+    int countMine(int r, int c) {
         if (r < 0 || r >= numRows || c < 0 || c >= numCols) {
             return 0;
         }
@@ -342,7 +444,32 @@ public class MineSweeper {
         }
         return 0;
     }
-
+    void restartGame(){
+        frame.dispose();
+        StartMemu startMenu = new StartMemu(mode -> {
+            MineSweeper newGame = new MineSweeper(app,mode);
+        });
+        startMenu.showMenu();
+    }
+    public void ShowDialog() {
+        String[] responses = {"예","아니요"};
+        ImageIcon icon = new ImageIcon(" ");
+        int result = JOptionPane.showOptionDialog(null, "게임을 계속하시겠습니까?", "quetion", JOptionPane.YES_NO_OPTION, 
+        		JOptionPane.QUESTION_MESSAGE, icon, responses, 0);
+        if (result == JOptionPane.YES_OPTION) {
+            StartMemu startMenu = new StartMemu(mode -> {
+                MineSweeper newGame = new MineSweeper(app,mode);
+            });
+            startMenu.showMenu();
+            frame.dispose();
+        }
+        else if (result == JOptionPane.NO_OPTION) {
+            frame.dispose();
+        }
+        else {
+            frame.dispose();
+        }
+    }
     public static void main(String[] args) {
         new MineSweeper(null, null);
     }

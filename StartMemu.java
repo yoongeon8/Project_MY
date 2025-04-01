@@ -5,21 +5,55 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 
 public class StartMemu{
+	Rank rk;
+	
+	public class RoundedButton extends JButton {
+
+	    public RoundedButton(String text) {
+	        super(text);
+	        setFont(new Font("Arial", Font.BOLD, 25));
+	        setFocusPainted(false);
+	        setContentAreaFilled(false);
+	        setOpaque(false);
+	        setForeground(new Color(0, 0, 0));
+	    }
+
+	    @Override
+	    protected void paintComponent(Graphics g) {
+	        Graphics2D g2 = (Graphics2D) g.create();
+	        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+	        g2.setColor(Color.decode("#98FB98"));
+	        g2.fillRoundRect(0, 0, getWidth(), getHeight(), 100, 100);
+
+	        super.paintComponent(g);
+	        g2.dispose();
+	    }
+
+	    @Override
+	    protected void paintBorder(Graphics g) {
+	    }
+	}
+	
     private final java.util.function.Consumer<String> onStartGame; // 게임 시작 콜백, 선택된 모드를 전달
     private String selectedMode = null; // 선택된 모드 저장
 
     // 생성자에서 콜백을 전달받음
     public StartMemu(java.util.function.Consumer<String> onStartGame) {
         this.onStartGame = onStartGame;
+        this.rk = new Rank();
     }
 
     // StartMenu를 표시하는 메서드
     public void showMenu() {
+    	ImageIcon image = new ImageIcon("imgs/unnamed.jpg");
         JFrame frame = new JFrame("Memu display");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(900, 900);
+        frame.setResizable(false);
         frame.setLayout(null);
         frame.setLocationRelativeTo(null);
+        frame.setIconImage(image.getImage());
 
         // 이미지 경로 설정
         String imagePath = "imgs/Final.png";
@@ -37,13 +71,9 @@ public class StartMemu{
         startButton.setBounds(375, 500, 200, 50);
         startButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
-        JButton ranking = new JButton("RANKING");
-        ranking.setFont(new Font("Arial", Font.BOLD, 25));
-        ranking.setFocusPainted(false);
-        ranking.setBackground(Color.decode("#424242"));
-        ranking.setForeground(Color.WHITE);
-        ranking.setBounds(375, 550, 200, 50);
-        ranking.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        RoundedButton rank = new RoundedButton("RANK");
+        rank.setBounds(750, 50, 115, 75);
+        rank.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
         JButton easy = new JButton("EASY");
         easy.setFont(new Font("Arial", Font.BOLD, 25));
@@ -75,7 +105,12 @@ public class StartMemu{
             frame.dispose(); // 시작 화면 닫기
             onStartGame.accept(selectedMode); // 선택된 모드 전달
         });
-
+        
+        rank.addActionListener((ActionEvent e) -> {
+        	frame.dispose();
+        	SwingUtilities.invokeLater(Rank::ShowRank);
+        });
+        
         // 모드 버튼 클릭 이벤트
         easy.addActionListener((ActionEvent e) -> {
             selectedMode = "EASY";
@@ -103,10 +138,10 @@ public class StartMemu{
         layeredPane.setBounds(0, 0, 900, 900);
         layeredPane.add(backgroundLabel, Integer.valueOf(0));
         layeredPane.add(startButton, Integer.valueOf(1));
-        layeredPane.add(ranking, Integer.valueOf(2));
-        layeredPane.add(easy, Integer.valueOf(3));
-        layeredPane.add(normal, Integer.valueOf(4));
-        layeredPane.add(hard, Integer.valueOf(5));
+        layeredPane.add(easy, Integer.valueOf(2));
+        layeredPane.add(normal, Integer.valueOf(3));
+        layeredPane.add(hard, Integer.valueOf(4));
+        layeredPane.add(rank, Integer.valueOf(5));
 
         frame.add(layeredPane);
         frame.setVisible(true);
